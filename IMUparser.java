@@ -1,14 +1,52 @@
-package imu_parser;
-
 import imu_math.IMUConverter;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
 import java.io.*;
 import java.net.*;
 
-public class IMUparser {
+public class IMUparser extends Application {
+    private Label imuDataLabel;
+    private Button toggleButton;
+    private boolean displayEuler = true;
+
     public static void main(String[] args) {
-        String HOST = "192.168.230.18"; // Go to wifi settings and see IP of network connected to. In HyperIMU server IP
-                                        // address, IP should be the same
-        int PORT = 12345; // SAME ON BOTH THE DEVICES
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        imuDataLabel = new Label("IMU Data:");
+        toggleButton = new Button("Toggle Display");
+
+        // Add a click event handler to the toggle button
+        toggleButton.setOnAction(e -> toggleDisplay());
+
+        VBox root = new VBox(imuDataLabel, toggleButton);
+        Scene scene = new Scene(root, 600, 400);
+
+        primaryStage.setTitle("IMU Data Viewer");
+        primaryStage.setScene(scene);
+        primaryStage.show();
+
+        // Start a thread to receive IMU data from the network socket
+        new Thread(this::receiveIMUData).start();
+    }
+
+    // Toggle between displaying Euler angles and quaternions
+    private void toggleDisplay() {
+        displayEuler = !displayEuler;
+    }
+
+    // Receive IMU data from the network socket and update the GUI
+    private void receiveIMUData() {
+        String HOST = "192.168.230.18";
+        int PORT = 12345;
 
         try {
             InetAddress serverAddress = InetAddress.getByName(HOST);
@@ -24,7 +62,7 @@ public class IMUparser {
             while (true) {
                 String data = in.readLine();
                 if (data == null) {
-                    System.out.println("No data received. Exiting.");
+                    updateIMUDataLabel("No data received. Exiting.");
                     break;
                 }
 
@@ -38,29 +76,41 @@ public class IMUparser {
                     double angularAccelerationY = Double.parseDouble(values[4]);
                     double angularAccelerationZ = Double.parseDouble(values[5]);
 
-                    double eulerX = Math.toRadians(Double.parseDouble(values[6])); // Convert degrees to radians
-                    double eulerY = Math.toRadians(Double.parseDouble(values[7])); // Convert degrees to radians
-                    double eulerZ = Math.toRadians(Double.parseDouble(values[8])); // Convert degrees to radians
+                    double eulerX = Math.toRadians(Double.parseDouble(values[6]));
+                    double eulerY = Math.toRadians(Double.parseDouble(values[7]));
+                    double eulerZ = Math.toRadians(Double.parseDouble(values[8]));
 
-                    System.out.println("Received IMU data:");
-                    System.out.println("Linear Acceleration X: " + linearAccelerationX);
-                    System.out.println("Linear Acceleration Y: " + linearAccelerationY);
-                    System.out.println("Linear Acceleration Z: " + linearAccelerationZ);
+                    double quat[] = IMUConverter.eulerToQuaternion(eulerY, eulerX, eulerZ);
 
-                    System.out.println("Angular Acceleration X: " + angularAccelerationX);
-                    System.out.println("Angular Acceleration Y: " + angularAccelerationY);
-                    System.out.println("Angular Acceleration Z: " + angularAccelerationZ);
-
-                    double quat[] = IMUConverter.eulerToQuaternion(eulerY, eulerX, eulerZ); // Implementing IMUConverter
-                                                                                            // package to convert Euler
-                                                                                            // values to Quaternions
-
-                    System.out.println("Quaternion X: " + quat[0]);
-                    System.out.println("Quaternion Y: " + quat[1]);
-                    System.out.println("Quaternion Z: " + quat[2]);
-                    System.out.println("Quaternion W: " + quat[3]);
+                    // Update the GUI with received IMU data
+                    String imuData;
+                    if (displayEuler) {
+                        imuData = "Received IMU data:\n" +
+                                "Linear Acceleration X: " + linearAccelerationX + "\n" +
+                                "Linear Acceleration Y: " + linearAccelerationY + "\n" +
+                                "Linear Acceleration Z: " + linearAccelerationZ + "\n" +
+                                "Angular Acceleration X: " + angularAccelerationX + "\n" +
+                                "Angular Acceleration Y: " + angularAccelerationY + "\n" +
+                                "Angular Acceleration Z: " + angularAccelerationZ + "\n" +
+                                "Euler X: " + Math.toDegrees(eulerX) + " degrees\n" +
+                                "Euler Y: " + Math.toDegrees(eulerY) + " degrees\n" +
+                                "Euler Z: " + Math.toDegrees(eulerZ) + " degrees";
+                    } else {
+                        imuData = "Received IMU data:\n" +
+                                "Linear Acceleration X: " + linearAccelerationX + "\n" +
+                                "Linear Acceleration Y: " + linearAccelerationY + "\n" +
+                                "Linear Acceleration Z: " + linearAccelerationZ + "\n" +
+                                "Angular Acceleration X: " + angularAccelerationX + "\n" +
+                                "Angular Acceleration Y: " + angularAccelerationY + "\n" +
+                                "Angular Acceleration Z: " + angularAccelerationZ + "\n" +
+                                "Quaternion X: " + quat[0] + "\n" +
+                                "Quaternion Y: " + quat[1] + "\n" +
+                                "Quaternion Z: " + quat[2] + "\n" +
+                                "Quaternion W: " + quat[3] + "\n";
+                    }
+                    updateIMUDataLabel(imuData);
                 } else {
-                    System.out.println("Received data does not contain 9 values.");
+                    updateIMUDataLabel("Received data does not contain 9 values.");
                 }
             }
 
@@ -75,4 +125,8 @@ public class IMUparser {
         }
     }
 
+    // Update the IMU data label on the JavaFX UI
+    private void updateIMUDataLabel(String data) {
+        Platform.runLater(() -> imuDataLabel.setText(data));
+    }
 }
