@@ -1,0 +1,5 @@
+COMPILE
+javac --module-path "C:\Program Files\Java\javafx-sdk-21.0.1\lib" --add-modules javafx.controls,javafx.fxml,javafx.media,javafx.base,javafx.graphics  IMUparser.java
+
+RUN
+java --module-path "C:\Program Files\Java\javafx-sdk-21.0.1\lib" --add-modules javafx.controls,javafx.fxml,javafx.media,javafx.base,javafx.graphics  IMUparser 

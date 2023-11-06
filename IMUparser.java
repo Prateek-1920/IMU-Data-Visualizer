@@ -2,18 +2,27 @@ import imu_math.IMUConverter;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.*;
 import java.net.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class IMUparser extends Application {
     private Label imuDataLabel;
     private Button toggleButton;
+    private Button recordButton;
     private boolean displayEuler = true;
+    private boolean recording = false;
+    private BufferedWriter csvWriter;
+    private String currentFileName = null;
 
     public static void main(String[] args) {
         launch(args);
@@ -23,12 +32,22 @@ public class IMUparser extends Application {
     public void start(Stage primaryStage) {
         imuDataLabel = new Label("IMU Data:");
         toggleButton = new Button("Toggle Display");
+        recordButton = new Button("Record Data");
+        HBox buttonBox = new HBox(toggleButton, recordButton);
 
-        // Add a click event handler to the toggle button
+        // Add click event handlers to the buttons
         toggleButton.setOnAction(e -> toggleDisplay());
+        recordButton.setOnAction(e -> toggleRecordData());
 
-        VBox root = new VBox(imuDataLabel, toggleButton);
-        Scene scene = new Scene(root, 600, 400);
+        VBox root = new VBox(imuDataLabel, buttonBox);
+        root.setSpacing(10); // Add some spacing between elements
+        root.setPadding(new javafx.geometry.Insets(10)); // Add padding to the container
+        Scene scene = new Scene(root, 800, 400);
+
+        // Apply some basic styling to the label and buttons
+        imuDataLabel.setStyle("-fx-font-size: 16;");
+        toggleButton.setStyle("-fx-font-size: 14;");
+        recordButton.setStyle("-fx-font-size: 14;");
 
         primaryStage.setTitle("IMU Data Viewer");
         primaryStage.setScene(scene);
@@ -43,9 +62,36 @@ public class IMUparser extends Application {
         displayEuler = !displayEuler;
     }
 
+    // Toggle data recording
+    private void toggleRecordData() {
+        recording = !recording;
+
+        if (recording) {
+            try {
+                currentFileName = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()) + "_imu_data.csv";
+                csvWriter = new BufferedWriter(new FileWriter(currentFileName));
+                imuDataLabel.setText("Recording data...");
+                recordButton.setText("Stop Recording Data");
+            } catch (IOException e) {
+                showRecordError();
+                recording = false;
+            }
+        } else {
+            try {
+                if (csvWriter != null) {
+                    csvWriter.close();
+                    imuDataLabel.setText("Recording stopped. Data saved to CSV file: " + currentFileName);
+                    recordButton.setText("Record Data");
+                }
+            } catch (IOException e) {
+                showRecordError();
+            }
+        }
+    }
+
     // Receive IMU data from the network socket and update the GUI
     private void receiveIMUData() {
-        String HOST = "192.168.230.18";
+        String HOST = "192.168.199.18";
         int PORT = 12345;
 
         try {
@@ -71,6 +117,12 @@ public class IMUparser extends Application {
                     double linearAccelerationX = Double.parseDouble(values[0]);
                     double linearAccelerationY = Double.parseDouble(values[1]);
                     double linearAccelerationZ = Double.parseDouble(values[2]);
+
+                    // Check if the linear acceleration exceeds 10
+                    if (Math.abs(linearAccelerationX) > 10 || Math.abs(linearAccelerationY) > 10
+                            || Math.abs(linearAccelerationZ) > 10) {
+                        showAccelerationWarning();
+                    }
 
                     double angularAccelerationX = Double.parseDouble(values[3]);
                     double angularAccelerationY = Double.parseDouble(values[4]);
@@ -109,6 +161,10 @@ public class IMUparser extends Application {
                                 "Quaternion W: " + quat[3] + "\n";
                     }
                     updateIMUDataLabel(imuData);
+
+                    if (recording && csvWriter != null) {
+                        writeDataToCSV(data);
+                    }
                 } else {
                     updateIMUDataLabel("Received data does not contain 9 values.");
                 }
@@ -128,5 +184,39 @@ public class IMUparser extends Application {
     // Update the IMU data label on the JavaFX UI
     private void updateIMUDataLabel(String data) {
         Platform.runLater(() -> imuDataLabel.setText(data));
+    }
+
+    // Show a warning dialog for high acceleration
+    private void showAccelerationWarning() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(AlertType.WARNING);
+            alert.setTitle("Acceleration Warning");
+            alert.setHeaderText("High Linear Acceleration Detected");
+            alert.setContentText("Linear acceleration exceeds 10. Please be cautious.");
+            alert.show();
+        });
+    }
+
+    // Show an error dialog for recording data
+    private void showRecordError() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Recording Error");
+            alert.setHeaderText("Error occurred while recording data.");
+            alert.show();
+        });
+    }
+
+    // Write data to the CSV file
+    private void writeDataToCSV(String data) {
+        try {
+            if (csvWriter != null) {
+                csvWriter.write(data);
+                csvWriter.newLine();
+            }
+        } catch (IOException e) {
+            showRecordError();
+            recording = false;
+        }
     }
 }
