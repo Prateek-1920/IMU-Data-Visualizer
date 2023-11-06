@@ -91,7 +91,7 @@ public class IMUparser extends Application {
 
     // Receive IMU data from the network socket and update the GUI
     private void receiveIMUData() {
-        String HOST = "192.168.230.18";
+        String HOST = "192.168.199.18";
         int PORT = 12345;
 
         try {
@@ -184,5 +184,39 @@ public class IMUparser extends Application {
     // Update the IMU data label on the JavaFX UI
     private void updateIMUDataLabel(String data) {
         Platform.runLater(() -> imuDataLabel.setText(data));
+    }
+
+    // Show a warning dialog for high acceleration
+    private void showAccelerationWarning() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(AlertType.WARNING);
+            alert.setTitle("Acceleration Warning");
+            alert.setHeaderText("High Linear Acceleration Detected");
+            alert.setContentText("Linear acceleration exceeds 10. Please be cautious.");
+            alert.show();
+        });
+    }
+
+    // Show an error dialog for recording data
+    private void showRecordError() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Recording Error");
+            alert.setHeaderText("Error occurred while recording data.");
+            alert.show();
+        });
+    }
+
+    // Write data to the CSV file
+    private void writeDataToCSV(String data) {
+        try {
+            if (csvWriter != null) {
+                csvWriter.write(data);
+                csvWriter.newLine();
+            }
+        } catch (IOException e) {
+            showRecordError();
+            recording = false;
+        }
     }
 }
