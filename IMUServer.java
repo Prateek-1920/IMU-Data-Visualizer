@@ -2,12 +2,11 @@ import imu_math.IMUConverter;
 import java.io.*;
 import java.net.*;
 
-
-
 public class IMUServer {
 
     public static void main(String[] args) {
-        String HOST = "192.168.230.18"; // Go to wifi settings and see IP of network connected to. In HyperIMU server IP address, IP should be the same
+        String HOST = "192.168.199.18"; // Go to wifi settings and see IP of network connected to. In HyperIMU server IP
+                                        // address, IP should be the same
         int PORT = 12345; // SAME ON BOTH THE DEVICES
 
         try {
@@ -51,10 +50,12 @@ public class IMUServer {
                     System.out.println("Angular Acceleration Y: " + angularAccelerationY);
                     System.out.println("Angular Acceleration Z: " + angularAccelerationZ);
 
-                    double quat[] = IMUConverter.eulerToQuaternion(eulerY, eulerX, eulerZ); // Implementing IMUConverter package to convert Euler values to Quaternions
+                    double quat[] = IMUConverter.eulerToQuaternion(eulerY, eulerX, eulerZ); // Implementing IMUConverter
+                                                                                            // package to convert Euler
+                                                                                            // values to Quaternions
 
                     System.out.println("Quaternion X: " + quat[0]);
-                    System.out.println("Quaternion Y: " + quat[1]);  
+                    System.out.println("Quaternion Y: " + quat[1]);
                     System.out.println("Quaternion Z: " + quat[2]);
                     System.out.println("Quaternion W: " + quat[3]);
                 } else {

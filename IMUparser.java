@@ -31,9 +31,11 @@ public class IMUparser extends Application {
     @Override
     public void start(Stage primaryStage) {
         imuDataLabel = new Label("IMU Data:");
-        toggleButton = new Button("Toggle Display");
-        recordButton = new Button("Record Data");
+        toggleButton = new Button("TOGGLE DATA");
+        recordButton = new Button("RECORD");
+
         HBox buttonBox = new HBox(toggleButton, recordButton);
+        buttonBox.setSpacing(10); // Add spacing between buttons
 
         // Add click event handlers to the buttons
         toggleButton.setOnAction(e -> toggleDisplay());
@@ -42,7 +44,7 @@ public class IMUparser extends Application {
         VBox root = new VBox(imuDataLabel, buttonBox);
         root.setSpacing(10); // Add some spacing between elements
         root.setPadding(new javafx.geometry.Insets(10)); // Add padding to the container
-        Scene scene = new Scene(root, 800, 400);
+        Scene scene = new Scene(root, 350, 500);
 
         // Apply some basic styling to the label and buttons
         imuDataLabel.setStyle("-fx-font-size: 16;");
@@ -57,9 +59,34 @@ public class IMUparser extends Application {
         new Thread(this::receiveIMUData).start();
     }
 
+    private void updateIMUDataLabel(String data) {
+        Platform.runLater(() -> imuDataLabel.setText(data));
+    }
+
     // Toggle between displaying Euler angles and quaternions
     private void toggleDisplay() {
         displayEuler = !displayEuler;
+    }
+
+    private void writeDataToCSV(String data) {
+        try {
+            if (csvWriter != null) {
+                csvWriter.write(data);
+                csvWriter.newLine();
+            }
+        } catch (IOException e) {
+            showRecordError();
+            recording = false;
+        }
+    }
+
+    private void showRecordError() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Recording Error");
+            alert.setHeaderText("Error occurred while recording data.");
+            alert.show();
+        });
     }
 
     // Toggle data recording
@@ -87,6 +114,16 @@ public class IMUparser extends Application {
                 showRecordError();
             }
         }
+    }
+
+    private void showAccelerationWarning() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(AlertType.WARNING);
+            alert.setTitle("Acceleration Warning");
+            alert.setHeaderText("High Linear Acceleration Detected");
+            alert.setContentText("Linear acceleration exceeds 10. Please be cautious.");
+            alert.show();
+        });
     }
 
     // Receive IMU data from the network socket and update the GUI
@@ -138,23 +175,29 @@ public class IMUparser extends Application {
                     String imuData;
                     if (displayEuler) {
                         imuData = "Received IMU data:\n" +
+                                "\n" +
                                 "Linear Acceleration X: " + linearAccelerationX + "\n" +
                                 "Linear Acceleration Y: " + linearAccelerationY + "\n" +
                                 "Linear Acceleration Z: " + linearAccelerationZ + "\n" +
+                                "\n" +
                                 "Angular Acceleration X: " + angularAccelerationX + "\n" +
                                 "Angular Acceleration Y: " + angularAccelerationY + "\n" +
                                 "Angular Acceleration Z: " + angularAccelerationZ + "\n" +
+                                "\n" +
                                 "Euler X: " + Math.toDegrees(eulerX) + " degrees\n" +
                                 "Euler Y: " + Math.toDegrees(eulerY) + " degrees\n" +
                                 "Euler Z: " + Math.toDegrees(eulerZ) + " degrees";
                     } else {
                         imuData = "Received IMU data:\n" +
+                                "\n" +
                                 "Linear Acceleration X: " + linearAccelerationX + "\n" +
                                 "Linear Acceleration Y: " + linearAccelerationY + "\n" +
                                 "Linear Acceleration Z: " + linearAccelerationZ + "\n" +
+                                "\n" +
                                 "Angular Acceleration X: " + angularAccelerationX + "\n" +
                                 "Angular Acceleration Y: " + angularAccelerationY + "\n" +
                                 "Angular Acceleration Z: " + angularAccelerationZ + "\n" +
+                                "\n" +
                                 "Quaternion X: " + quat[0] + "\n" +
                                 "Quaternion Y: " + quat[1] + "\n" +
                                 "Quaternion Z: " + quat[2] + "\n" +
@@ -177,46 +220,9 @@ public class IMUparser extends Application {
             serverSocket.close();
 
         } catch (IOException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
+            System.out.println("BINDING FAILED ! PLEASE CHECK IP");
         }
     }
 
-    // Update the IMU data label on the JavaFX UI
-    private void updateIMUDataLabel(String data) {
-        Platform.runLater(() -> imuDataLabel.setText(data));
-    }
-
-    // Show a warning dialog for high acceleration
-    private void showAccelerationWarning() {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(AlertType.WARNING);
-            alert.setTitle("Acceleration Warning");
-            alert.setHeaderText("High Linear Acceleration Detected");
-            alert.setContentText("Linear acceleration exceeds 10. Please be cautious.");
-            alert.show();
-        });
-    }
-
-    // Show an error dialog for recording data
-    private void showRecordError() {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(AlertType.ERROR);
-            alert.setTitle("Recording Error");
-            alert.setHeaderText("Error occurred while recording data.");
-            alert.show();
-        });
-    }
-
-    // Write data to the CSV file
-    private void writeDataToCSV(String data) {
-        try {
-            if (csvWriter != null) {
-                csvWriter.write(data);
-                csvWriter.newLine();
-            }
-        } catch (IOException e) {
-            showRecordError();
-            recording = false;
-        }
-    }
 }
