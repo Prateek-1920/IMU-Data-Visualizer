@@ -145,7 +145,7 @@ public class IMUparser extends Application {
             while (true) {
                 String data = in.readLine();
                 if (data == null) {
-                    updateIMUDataLabel("No data received. Exiting.");
+                    updateIMUDataLabel("No data received. Please exit.");
                     break;
                 }
 
